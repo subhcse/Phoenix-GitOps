@@ -1,0 +1,54 @@
+# .github/workflows/test.yml
+name: Repository Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-kubernetes:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+    
+    - name: Validate Kubernetes manifests
+      run: |
+        find kubernetes -name "*.yaml" -o -name "*.yml" | xargs kubectl --dry-run=client apply -f
+    
+    - name: Validate Helm charts
+      run: |
+        helm lint charts/phoenix-app/
+        helm template charts/phoenix-app/ --values charts/phoenix-app/values.yaml
+  
+  validate-scripts:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate shell scripts
+      run: |
+        sudo apt-get install -y shellcheck
+        find scripts -name "*.sh" | xargs shellcheck
+  
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
