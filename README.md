@@ -119,3 +119,15 @@ A complete GitOps-managed Phoenix application deployment on Kubernetes using Flu
     │   └── test-monitoring.sh
     └── unit/                  # Unit tests
         └── test-helm-charts.sh
+
+
+
+# The repo will be structured like this:
+Phoenix-GitOps/
+├── kubernetes/          # Complete GitOps manifests
+├── charts/phoenix-app/  # Production-ready Helm chart  
+├── phoenix-app/         # Dockerfile + source modifications
+├── scripts/             # Automation tools
+├── .github/workflows/   # CI/CD pipelines
+├── Makefile            # 15+ automation commands
+└── README.md           # Complete documentation
