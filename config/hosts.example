@@ -1,0 +1,14 @@
+# config/hosts.example
+# Add these entries to your /etc/hosts file for local development
+# Or configure your local DNS server (Pi-hole, etc.)
+
+127.0.0.1 phoenix.local
+127.0.0.1 grafana.local
+127.0.0.1 prometheus.local
+127.0.0.1 alertmanager.local
+
+# If using different domain suffix, update accordingly:
+# 127.0.0.1 phoenix.yourdomain.com
+# 127.0.0.1 grafana.yourdomain.com
+
+---
