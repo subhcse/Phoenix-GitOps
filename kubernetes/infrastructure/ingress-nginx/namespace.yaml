@@ -1,0 +1,9 @@
+---
+# kubernetes/infrastructure/ingress-nginx/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    name: ingress-nginx
+    toolkit.fluxcd.io/tenant: platform-team
