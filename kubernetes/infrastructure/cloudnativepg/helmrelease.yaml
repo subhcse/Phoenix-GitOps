@@ -1,0 +1,28 @@
+---
+# kubernetes/infrastructure/cloudnativepg/helmrelease.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: cloudnative-pg
+  namespace: cnpg-system
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: cloudnative-pg
+      version: "0.18.2"
+      sourceRef:
+        kind: HelmRepository
+        name: cnpg
+        namespace: cnpg-system
+  values:
+    monitoring:
+      enabled: true
+      podMonitorEnabled: true
+      grafanaDashboard:
+        create: true
+        namespace: monitoring
+    image:
+      repository: ghcr.io/cloudnative-pg/cloudnative-pg
+    crds:
+      create: true
