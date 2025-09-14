@@ -1,0 +1,22 @@
+---
+# kubernetes/infrastructure/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Core infrastructure
+  - ingress-nginx/namespace.yaml
+  - ingress-nginx/helmrepository.yaml
+  - ingress-nginx/helmrelease.yaml
+  
+  # Database operator
+  - cloudnativepg/namespace.yaml
+  - cloudnativepg/helmrepository.yaml
+  - cloudnativepg/helmrelease.yaml
+  
+  # Monitoring stack
+  - monitoring/namespace.yaml
+  - monitoring/helmrepository.yaml
+  - monitoring/helmrelease.yaml
+  - monitoring/servicemonitor.yaml
+  - monitoring/prometheus-rules.yaml
