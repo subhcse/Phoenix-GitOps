@@ -1,0 +1,180 @@
+---
+# kubernetes/infrastructure/monitoring/helmrelease.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 15m
+  timeout: 20m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "55.5.0"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: monitoring
+  values:
+    # Grafana Configuration
+    grafana:
+      enabled: true
+      adminPassword: admin
+      persistence:
+        enabled: true
+        size: 1Gi
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        hosts:
+          - grafana.local
+        path: /
+        pathType: Prefix
+      
+      # Pre-install CloudNativePG dashboard
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+          - name: 'cloudnativepg'
+            orgId: 1
+            folder: 'CloudNativePG'
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/cloudnativepg
+          - name: 'phoenix-app'
+            orgId: 1
+            folder: 'Phoenix Application'
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/phoenix-app
+      
+      dashboards:
+        cloudnativepg:
+          cloudnativepg-dashboard:
+            gnetId: 20417
+            revision: 1
+            datasource: Prometheus
+        phoenix-app:
+          phoenix-dashboard:
+            file: dashboards/phoenix-app.json
+    
+    # Prometheus Configuration
+    prometheus:
+      enabled: true
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        hosts:
+          - prometheus.local
+        paths:
+          - /
+        pathType: Prefix
+      
+      prometheusSpec:
+        retention: 7d
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 10Gi
+        
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        
+        # Additional scrape configs for CloudNativePG
+        additionalScrapeConfigs:
+          - job_name: 'cloudnativepg'
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names: ['database']
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                action: keep
+                regex: true
+              - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                action: replace
+                target_label: __metrics_path__
+                regex: (.+)
+              - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                action: replace
+                regex: ([^:]+)(?::\d+)?;(\d+)
+                replacement: $1:$2
+                target_label: __address__
+              - action: labelmap
+                regex: __meta_kubernetes_pod_label_(.+)
+              - source_labels: [__meta_kubernetes_namespace]
+                action: replace
+                target_label: kubernetes_namespace
+              - source_labels: [__meta_kubernetes_pod_name]
+                action: replace
+                target_label: kubernetes_pod_name
+    
+    # Alertmanager Configuration
+    alertmanager:
+      enabled: true
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        hosts:
+          - alertmanager.local
+        paths:
+          - /
+        pathType: Prefix
+      
+      config:
+        global:
+          smtp_smarthost: 'localhost:587'
+          smtp_from: 'alertmanager@phoenix.local'
+        
+        route:
+          group_by: ['alertname', 'cluster', 'service']
+          group_wait: 10s
+          group_interval: 10s
+          repeat_interval: 12h
+          receiver: 'webhook'
+          routes:
+            - matchers:
+                - severity = "critical"
+              receiver: 'critical-webhook'
+              repeat_interval: 5m
+        
+        receivers:
+        - name: 'webhook'
+          webhook_configs:
+          - url: 'http://webhook-receiver.monitoring.svc.cluster.local:5001/webhook'
+            send_resolved: true
+            title: 'Phoenix Homelab Alert'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        
+        - name: 'critical-webhook'
+          webhook_configs:
+          - url: 'http://webhook-receiver.monitoring.svc.cluster.local:5001/webhook/critical'
+            send_resolved: true
+            title: 'CRITICAL: Phoenix Homelab Alert'
+            text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+    
+    # Node Exporter
+    nodeExporter:
+      enabled: true
+    
+    # kube-state-metrics
+    kubeStateMetrics:
+      enabled: true
+    
+    # Prometheus Operator
+    prometheusOperator:
+      enabled: true
+      admissionWebhooks:
+        enabled: true
+        patch:
+          enabled: true
