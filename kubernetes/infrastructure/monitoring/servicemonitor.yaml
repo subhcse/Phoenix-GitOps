@@ -1,0 +1,23 @@
+---
+# kubernetes/infrastructure/monitoring/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: phoenix-app
+  namespace: monitoring
+  labels:
+    app: phoenix-app
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: phoenix-app
+  namespaceSelector:
+    matchNames:
+      - phoenix-app
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: true
