@@ -1,0 +1,118 @@
+---
+# kubernetes/infrastructure/monitoring/prometheus-rules.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: phoenix-app-alerts
+  namespace: monitoring
+  labels:
+    app: phoenix-app
+    release: prometheus
+spec:
+  groups:
+    - name: phoenix-app.rules
+      rules:
+        # Pod readiness alert (main requirement)
+        - alert: PhoenixAppPodNotReady
+          expr: |
+            (
+              kube_pod_status_ready{condition="false", namespace="phoenix-app"} == 1
+            ) and (
+              kube_pod_status_phase{phase="Running", namespace="phoenix-app"} == 1
+            )
+          for: 1m
+          labels:
+            severity: warning
+            component: phoenix-app
+            team: platform
+          annotations:
+            summary: "Phoenix application pod not ready"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 1 minute."
+            runbook_url: "https://github.com/YOUR_USERNAME/phoenix-gitops-homelab/blob/main/docs/runbooks/pod-not-ready.md"
+        
+        # High memory usage
+        - alert: PhoenixAppHighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{namespace="phoenix-app", container="phoenix-app"} 
+              / 
+              container_spec_memory_limit_bytes{namespace="phoenix-app", container="phoenix-app"}
+            ) * 100 > 80
+          for: 5m
+          labels:
+            severity: warning
+            component: phoenix-app
+            team: platform
+          annotations:
+            summary: "Phoenix application high memory usage"
+            description: "Phoenix app in {{ $labels.namespace }} is using {{ $value }}% of its memory limit."
+        
+        # High CPU usage
+        - alert: PhoenixAppHighCPUUsage
+          expr: |
+            (
+              rate(container_cpu_usage_seconds_total{namespace="phoenix-app", container="phoenix-app"}[5m]) * 100
+            ) > 80
+          for: 5m
+          labels:
+            severity: warning
+            component: phoenix-app
+            team: platform
+          annotations:
+            summary: "Phoenix application high CPU usage"
+            description: "Phoenix app in {{ $labels.namespace }} is using {{ $value }}% CPU."
+        
+        # Application down
+        - alert: PhoenixAppDown
+          expr: |
+            kube_deployment_status_replicas_available{deployment="phoenix-app", namespace="phoenix-app"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            component: phoenix-app
+            team: platform
+          annotations:
+            summary: "Phoenix application is down"
+            description: "Phoenix application has no available replicas in {{ $labels.namespace }}."
+        
+        # Database connection issues
+        - alert: PhoenixAppDatabaseConnectionErrors
+          expr: |
+            increase(phoenix_database_connection_errors_total[5m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+            component: phoenix-app
+            team: platform
+          annotations:
+            summary: "Phoenix application database connection errors"
+            description: "Phoenix app is experiencing database connection errors."
+    
+    - name: database.rules
+      rules:
+        # CloudNativePG cluster issues
+        - alert: PostgreSQLClusterNotHealthy
+          expr: |
+            cnpg_pg_replication_lag > 30
+          for: 2m
+          labels:
+            severity: warning
+            component: database
+            team: platform
+          annotations:
+            summary: "PostgreSQL replication lag is high"
+            description: "PostgreSQL cluster {{ $labels.cluster }} has replication lag of {{ $value }} seconds."
+        
+        - alert: PostgreSQLInstanceDown
+          expr: |
+            cnpg_pg_up == 0
+          for: 1m
+          labels:
+            severity: critical
+            component: database
+            team: platform
+          annotations:
+            summary: "PostgreSQL instance is down"
+            description: "PostgreSQL instance {{ $labels.instance }} in cluster {{ $labels.cluster }} is down."
+
+---
