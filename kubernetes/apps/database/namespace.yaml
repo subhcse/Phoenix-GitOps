@@ -1,0 +1,9 @@
+---
+# kubernetes/apps/database/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: database
+  labels:
+    name: database
+    toolkit.fluxcd.io/tenant: platform-team
