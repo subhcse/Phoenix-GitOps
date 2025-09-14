@@ -1,0 +1,9 @@
+---
+# kubernetes/infrastructure/cloudnativepg/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cnpg-system
+  labels:
+    name: cnpg-system
+    toolkit.fluxcd.io/tenant: platform-team
