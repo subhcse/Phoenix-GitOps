@@ -1,0 +1,9 @@
+---
+# kubernetes/apps/phoenix/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: phoenix-app
+  labels:
+    name: phoenix-app
+    toolkit.fluxcd.io/tenant: app-team
