@@ -1,0 +1,16 @@
+---
+# kubernetes/apps/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Database
+  - database/namespace.yaml
+  - database/cluster.yaml
+  - database/secret.yaml
+  - database/backup.yaml
+  
+  # Phoenix Application
+  - phoenix/namespace.yaml
+  - phoenix/helmrelease.yaml
+  - phoenix/secret.yaml
