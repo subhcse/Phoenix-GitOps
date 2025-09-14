@@ -1,0 +1,99 @@
+---
+# kubernetes/apps/phoenix/helmrelease.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: phoenix-app
+  namespace: phoenix-app
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: ./charts/phoenix-app
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+  values:
+    # Image configuration
+    image:
+      repository: your-docker-hub-username/phoenix-app
+      tag: latest
+      pullPolicy: Always
+    
+    # Scaling configuration
+    replicaCount: 2
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 4000
+      targetPort: 4000
+    
+    # Ingress configuration
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+        nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      hosts:
+        - host: phoenix.local
+          paths:
+            - path: /
+              pathType: Prefix
+      tls: []
+    
+    # Resource limits
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+    
+    # Autoscaling
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 80
+    
+    # Phoenix-specific configuration
+    phoenix:
+      port: 4000
+      env: prod
+      secretKeyBase: ""  # Will be set from secret
+      liveViewSigningSalt: ""  # Will be set from secret
+    
+    # Database configuration
+    database:
+      host: postgres-cluster-rw.database.svc.cluster.local
+      port: 5432
+      name: phoenix_app
+      existingSecret: phoenix-app-secrets
+    
+    # Health checks
+    healthcheck:
+      enabled: true
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    
+    # Security context
+    securityContext:
+      capabilities:
+        drop:
+        - ALL
+      readOnlyRootFilesystem: false
+      runAsNonRoot: true
+      runAsUser: 1000
+    
+    # Pod annotations for monitoring
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "4000"
+      prometheus.io/path: "/metrics"
